@@ -1,3 +1,6 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Oct 24 15:47:38 2022
 
 @author: HANIN
 """
@@ -106,7 +109,10 @@ plt.show()
 train.drop(['base_price'],axis=1,inplace=True)
 
 
-#Random Forest regressor on numerical
+#Random Forest regressor
+
+#columns center_id and meal_id and others are categorical variables, 
+#to manage categorical columns we using function their create new few sub-categories using get_dummies() function.
 df_final_dummies=pd.get_dummies(train)
 test_final_dummies=pd.get_dummies(test)
 test_final_dummies.T.head(31)
@@ -127,5 +133,4 @@ y_pred=regressor_rf.predict(X_test.values)
 # Model Evaluation
 print('R Square:',regressor_rf.score(X_train, y_train))
 print('RMSE:', np.sqrt(metrics.mean_squared_error(y_test,y_pred)))
-
 
