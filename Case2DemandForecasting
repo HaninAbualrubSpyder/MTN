@@ -1,1 +1,131 @@
 
+@author: HANIN
+"""
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.model_selection import train_test_split
+from sklearn import metrics
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import r2_score
+
+#Reading the data
+train_raw = pd.read_csv('train.csv')
+test_raw = pd.read_csv('test.csv')
+meal = pd.read_csv('meal_info.csv')
+center= pd.read_csv('fulfilment_center_info.csv')
+
+###############################
+#EDA
+#Summary of the dataset statistics
+meal.describe()
+meal.dtypes
+
+center.describe()
+center.dtypes
+
+#Checking for empty rows
+isna1=train_raw.isnull().sum()
+isna2=test_raw.isnull().sum()
+
+#Understanding the data
+print('Number of centers:', center["center_id"].nunique())
+print('Number of cities:',center["city_code"].nunique())
+print('Number of Regions:',center["region_code"].nunique())
+
+print('Number of meals:',meal["meal_id"].nunique())
+print('Number of meal categories:', meal["category"].nunique())
+print('Number of cuisines:',meal["cuisine"].nunique())
+
+#Plots
+cuisine = meal.cuisine.value_counts()
+#sns.set_style("darkgrid")
+plt.figure(figsize=(10,4))
+sns.barplot(x=cuisine.index, y=cuisine.values).set(title='Cuisine Count')
+plt.show()
+
+#Data Cleaning
+#Merging train data with meal and center info
+train = pd.merge(train_raw, meal, on="meal_id", how="left")
+train = pd.merge(train, center, on="center_id", how="left")
+#Train data after merge
+train.head()
+
+#Merging test data with meal and center info
+test= pd.merge(test_raw, meal, on="meal_id", how="outer")
+test = pd.merge(test, center, on="center_id", how="outer")
+#Test data after merge
+test.head()
+
+#Variable definition
+col_names=['center_id','meal_id','category','cuisine','city_code','region_code','center_type']
+train[col_names] = train[col_names].astype('category')
+test[col_names] = test[col_names].astype('category')
+
+#Grouping center ID by number of orders in Train data
+centerorders=train.groupby("center_id",as_index=False).sum()
+centerorders=centerorders[["center_id","num_orders"]].sort_values(by="num_orders",ascending=False)
+
+#Histogram of number of orders
+plt.figure(figsize=(20,8))
+sns.barplot(x=centerorders.center_id, y=centerorders.num_orders).set(title='Num orders by Center')
+plt.tick_params(axis='x', rotation=90)
+plt.show()
+
+#Pie chart for number of orders by cuisine
+cuisineorders=train.groupby(["cuisine"],as_index=False).sum()
+cuisineorders=cuisineorders[["cuisine","num_orders"]].sort_values(by="num_orders",ascending=False)
+fig, ax = plt.subplots()
+ax.pie(cuisineorders.num_orders,labels=cuisineorders.cuisine,autopct='%1.1f%%', startangle=90)
+# Aspect ratio equal - pie is a circle
+ax.axis('equal')
+ax.set_title('Percentage of Num Orders by Cuisine', fontsize=18)
+plt.show()
+
+# orders weekly trend
+week_orders=train.groupby(["week"],as_index=False).sum()
+week_orders=week_orders[["week","num_orders"]]
+sns.lineplot(x=week_orders.week, y=week_orders.num_orders)
+
+##################################
+#The Model
+
+#Correlation Matrix for model building
+#dropping the column id due to irrelevance
+train.drop(['id'],axis=1,inplace=True)
+
+plt.figure(figsize=(13,13))
+sns.heatmap(train.corr(),linewidths=.1,cmap='Reds',annot=True)
+plt.title('Correlation Matrix')
+plt.show()
+
+#Elimnating multicollinearity by removing base_price
+train.drop(['base_price'],axis=1,inplace=True)
+
+
+#Random Forest regressor on numerical
+df_final_dummies=pd.get_dummies(train)
+test_final_dummies=pd.get_dummies(test)
+test_final_dummies.T.head(31)
+y=df_final_dummies['num_orders']
+X=df_final_dummies.drop(['num_orders'],axis=1)
+X_test=test_final_dummies
+X_test.head()
+X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=0.20,random_state=42)
+
+
+regressor_rf = RandomForestRegressor(random_state=42, n_jobs=-1, max_depth=5,
+                                       n_estimators=100, oob_score=True)
+regressor_rf.fit(X_train, y_train)
+
+#Predicted number of orders on test value
+y_pred=regressor_rf.predict(X_test.values)
+
+# Model Evaluation
+print('R Square:',regressor_rf.score(X_train, y_train))
+print('RMSE:', np.sqrt(metrics.mean_squared_error(y_test,y_pred)))
+
+
