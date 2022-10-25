@@ -1,0 +1,119 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Oct 24 15:47:38 2022
+
+@author: HANIN
+"""
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+from mpl_toolkits.mplot3d import Axes3D
+from sklearn.cluster import KMeans
+
+
+df = pd.read_csv("Mall_Customers.csv")
+df.head()
+
+###############################
+#EDA
+#Summary of the dataset statistics
+stat=df.describe()
+#We have 200 customers witrh average spending score of 50.2
+
+#Checking for empty rows
+isna=df.isnull().sum()
+
+gender = df.Gender.value_counts()
+#sns.set_style("darkgrid")
+plt.figure(figsize=(10,4))
+sns.barplot(x=gender.index, y=gender.values).set(title='Customer Count by Gender')
+plt.show()
+
+
+sns.boxplot(y=df["Spending_Score"], color="red").set(title='Boxplot of Spending score')
+
+sns.boxplot(y=df["Annual_Income_(k$)"]).set(title='Boxplot of Annual Income(k$)')
+
+
+age18_25 = df.Age[(df.Age <= 25) & (df.Age >= 18)]
+age26_35 = df.Age[(df.Age <= 35) & (df.Age >= 26)]
+age36_45 = df.Age[(df.Age <= 45) & (df.Age >= 36)]
+age46_55 = df.Age[(df.Age <= 55) & (df.Age >= 46)]
+age55above = df.Age[df.Age >= 56]
+x = ["[ 18-25 ]","[ 26-35 ]","[ 36-45 ]","[ 46-55 ]","[ 55+ ]"]
+y = [len(age18_25.values),len(age26_35.values),len(age36_45.values),len(age46_55.values),len(age55above.values)]
+fig, ax = plt.subplots()
+ax.pie(y,labels=x,autopct='%1.1f%%', startangle=90)
+# Aspect ratio equal - pie is a circle
+ax.axis('equal')
+ax.set_title('Percentage by Age Group', fontsize=18)
+plt.show()
+
+
+##################################
+#The Model
+
+#Finding K
+
+wcss = []
+for k in range(1,11):
+    kmeans = KMeans(n_clusters=k, init="k-means++")
+    kmeans.fit(df.iloc[:,2:])
+    wcss.append(kmeans.inertia_)
+plt.figure(figsize=(12,6))    
+plt.grid(b=True)
+plt.plot(range(1,11),wcss, linewidth=2, color="red", marker ="8")
+plt.xlabel("Number of Clusters")
+plt.xticks(np.arange(1,11,1))
+plt.ylabel("WCSS")
+plt.show()
+
+#Running the model with K=5
+km = KMeans(n_clusters=5)
+clusters = km.fit_predict(df.iloc[:,2:])
+#Adding the column with cluster label for each customer
+df["label"] = clusters
+ 
+#plotting the labelled data
+l=[1,2,3,4,5]
+fig = plt.figure(figsize=(20,10))
+ax = fig.add_subplot(111, projection='3d')
+ax.scatter(df.Age[df.label == 0], df["Annual_Income_(k$)"][df.label == 0], df["Spending_Score"][df.label == 0], c='blue', s=60)
+ax.scatter(df.Age[df.label == 1], df["Annual_Income_(k$)"][df.label == 1], df["Spending_Score"][df.label == 1], c='red', s=60)
+ax.scatter(df.Age[df.label == 2], df["Annual_Income_(k$)"][df.label == 2], df["Spending_Score"][df.label == 2], c='green', s=60)
+ax.scatter(df.Age[df.label == 3], df["Annual_Income_(k$)"][df.label == 3], df["Spending_Score"][df.label == 3], c='orange', s=60)
+ax.scatter(df.Age[df.label == 4], df["Annual_Income_(k$)"][df.label == 4], df["Spending_Score"][df.label == 4], c='purple', s=60)
+ax.legend(l)
+ax.view_init(30, 185)
+ax.grid(b=True, which='major', color='b', linestyle='-')
+plt.xlabel("Age")
+plt.ylabel("Annual Income (k$)")
+ax.set_zlabel('Spending Score')
+ax.set_title("3D Plot of Clustering")
+plt.show()
+
+#identifying customers in clusters
+clust1=df[df["label"]==1]
+print('Number of customers in cluster 1=', len(clust1))
+print('Cluster 1 Customer IDs', clust1["CustomerID"].values)
+
+clust2=df[df["label"]==2]
+print('Number of customers in cluster 2', len(clust2))
+print('Cluster 2 Customer IDs', clust2["CustomerID"].values)
+
+clust3=df[df["label"]==0]
+print('Number of customers in cluster 3', len(clust3))
+print('Cluster 3 Customer IDs', clust3["CustomerID"].values)
+
+clust4=df[df["label"]==3]
+print('Number of customers in cluster 4', len(clust4))
+print('Cluster 4 Customer IDs', clust4["CustomerID"].values)
+
+clust5=df[df["label"]==4]
+print('Number of customers in cluster 5', len(clust5))
+print('Cluster 5 Customer IDs', clust5["CustomerID"].values)
+
+data = [clust1["CustomerID"].values,clust2["CustomerID"].values,clust3["CustomerID"].values,clust4["CustomerID"].values,clust5["CustomerID"].values]
+
