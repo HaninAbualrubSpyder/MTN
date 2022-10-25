@@ -20,10 +20,12 @@ df.head()
 #EDA
 #Summary of the dataset statistics
 stat=df.describe()
+info=df.dtypes
 #We have 200 customers witrh average spending score of 50.2
 
 #Checking for empty rows
 isna=df.isnull().sum()
+#no empty rows, proceed
 
 gender = df.Gender.value_counts()
 #sns.set_style("darkgrid")
